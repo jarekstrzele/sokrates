@@ -1,0 +1,7 @@
+{
+    "user_name": "jarek",
+    "password": "1234",
+    "role": "admin"
+   
+}
+
