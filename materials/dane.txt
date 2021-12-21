@@ -1,7 +1,10 @@
 {
-    "user_name": "jarek",
-    "password": "1234",
-    "role": "admin"
+    "name": "admin",
+    "password": "xyz"
    
 }
+
+api.add_resource(Test, '/test')
+api.add_resource(Register, '/register')
+api.add_resource(AdminPanel, '/adminpanel')
 
