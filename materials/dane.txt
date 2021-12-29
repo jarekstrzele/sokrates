@@ -8,3 +8,24 @@ api.add_resource(Test, '/test')
 api.add_resource(Register, '/register')
 api.add_resource(AdminPanel, '/adminpanel')
 
+
+#############################
+#       Collections         #
+#############################
+class User(db.Document):
+    user_name = db.StringField(unique=True)
+    password = db.StringField()
+    admin = db.BooleanField()
+    test_creator = db.BooleanField()
+    date_of_registration = db.DateTimeField(default=datetime.utcnow)
+
+class Topic(db.EmbeddedDocument):
+    topic_name = db.StringField(required=True)
+    philosopher = db.StringField(required=True)
+    content = db.StringField(required=True)
+
+class Test(db.Document):
+    author = db.ReferenceField(User)
+    test_name = db.StringField(required=True, unique=True)
+    topics = db.EmbeddedDocumentListField(Topic)
+
