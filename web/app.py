@@ -32,16 +32,15 @@ class User(db.Document):
     test_creator = db.BooleanField()
     date_of_registration = db.DateTimeField(default=datetime.utcnow)
 
-class Topic(db.EmbeddedDocument):
-    topic_name = db.StringField(required=True)
-    philosopher = db.StringField(required=True)
-    content = db.StringField(required=True)
-
 class Test(db.Document):
     author = db.ReferenceField(User)
     test_name = db.StringField(required=True, unique=True)
-    topics = db.EmbeddedDocumentListField(Topic)
-
+    
+class Topic(db.Document):
+    test_name = db.ReferenceField(Test) #, reverse_delete_rule=CASCADE)
+    topic_name = db.StringField(required=True)
+    philosopher = db.StringField(required=True)
+    content = db.StringField(required=True)
 
 #############
 #    API    #
@@ -119,7 +118,7 @@ class AddTest(Resource):
         
         return jsonify({
             "stauts": 200,
-            "msg": str(Test.objects(test_name=test_name)) + "saved."
+            "msg": str(Test.objects(test_name=test_name)) + " saved."
         })
 
 
@@ -157,14 +156,16 @@ class AddTopic(Resource):
                 "stauts": 303,
                 "msg": "You are not an author of this test."
             })
-
+        the_test_name = the_test.test_name
         topic_name = postedData["topic_name"]
         philosopher = postedData["philosopher"]
         content = postedData["content"]
 
-        topic = Topic(topic_name=topic_name, philosopher=philosopher, content=content)
-        the_test.topics.append(topic)
-        the_test.save()
+        Topic(test_name = the_test_name,
+              topic_name=topic_name, 
+              philosopher=philosopher, 
+              content=content).save()
+        
         
         return jsonify({
                 "stauts": 200,
@@ -189,10 +190,11 @@ class Show(Resource):
         for u in User.objects():
             users.append(u.user_name)
         
-        tmp = Test.objects()
-        for t in tmp:
-            tests.append((t.test_name, t.author.user_name, t.topics))
-            for topic in t.topics:
+        
+        for t in Test.objects():
+            tests.append((t.test_name, t.author.user_name))
+        
+        for topic in Topic.objects():
                 topics.append((topic.topic_name, topic.philosopher, topic.content))
 
         administator = User.objects(admin=True).first()
