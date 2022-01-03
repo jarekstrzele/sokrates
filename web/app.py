@@ -29,18 +29,24 @@ class User(db.Document):
     user_name = db.StringField(unique=True)
     password = db.StringField()
     admin = db.BooleanField()
-    test_creator = db.BooleanField()
+    responses = db.DictField()
     date_of_registration = db.DateTimeField(default=datetime.utcnow)
+
+class Topic (db.EmbeddedDocument):
+    topic_name = db.StringField(required=True)
+    philosopher = db.StringField(required=True)
+    content = db.StringField(required=True)
 
 class Test(db.Document):
     author = db.ReferenceField(User)
     test_name = db.StringField(required=True, unique=True)
+    topics = db.EmbeddedDocumentListField(Topic, default =[])
     
-class Topic(db.Document):
-    test_name = db.ReferenceField(Test) #, reverse_delete_rule=CASCADE)
-    topic_name = db.StringField(required=True)
-    philosopher = db.StringField(required=True)
-    content = db.StringField(required=True)
+    
+    
+
+
+
 
 #############
 #    API    #
@@ -53,7 +59,7 @@ class Register(Resource):
         password = postedData["password"]
         hashed_pw = hash_password(password) 
        
-        user = User(user_name=user_name, password=hashed_pw, admin=False, test_creator=False )
+        user = User(user_name=user_name, password=hashed_pw, admin=False)
         user.save()
 
         return jsonify({
@@ -62,7 +68,6 @@ class Register(Resource):
             "user_name" :user.user_name,
             "password": user.password,
             "admin" :user.admin,
-            "test_creator" : user.test_creator,
             "date_of_regist": user.date_of_registration
         })
 
@@ -106,12 +111,8 @@ class AddTest(Resource):
         postedData = request.get_json()
                
         the_user = User.objects(user_name=postedData["user_name"]).get()
-        if not the_user.test_creator:
-            return jsonify({
-                "status":301,
-                "msg": "you can't creat a test"
-            })
         test_name = postedData["test_name"]
+
 
         # create a test as a collection
         Test(author=the_user, test_name=test_name).save()
@@ -129,10 +130,11 @@ class RemoveTest(Resource):
         the_user = User.objects(user_name=postedData["user_name"]).first()
         the_test = Test.objects(test_name=postedData["test_name"]).first()
 
-        if  the_user.admin or not the_user.user_name == the_test.author:
+        if  the_user.admin or the_user.user_name == the_test.author:
             the_test.delete()
             return jsonify({
-            "stauts": 200,
+            "status": 200,
+            "the_test/author": the_test.author,
             "msg": "Test has been deleted."
         })
         else:
@@ -156,15 +158,15 @@ class AddTopic(Resource):
                 "stauts": 303,
                 "msg": "You are not an author of this test."
             })
-        the_test_name = the_test.test_name
+        # the_test_name = the_test.test_name
+        
         topic_name = postedData["topic_name"]
         philosopher = postedData["philosopher"]
         content = postedData["content"]
 
-        Topic(test_name = the_test_name,
-              topic_name=topic_name, 
-              philosopher=philosopher, 
-              content=content).save()
+        topic = Topic(topic_name=topic_name, philosopher=philosopher, content=content)
+        the_test.topics.append(topic)
+        the_test.save()
         
         
         return jsonify({
@@ -172,21 +174,38 @@ class AddTopic(Resource):
                 "msg": "Topic was added."
             })
 
+class ShowTest(Resource):
+    # get collection and all its topics
+    # show first topic
+    # choose topic
+    # repeat
+    def get(self):
+        the_user = User.objects(user_name = "jarek").first()
+        the_test = Test.objects(test_name = "starożytność").first()
+       
+
+        
+        return jsonify(
+            {
+               "test":the_test
+              # "content": str(the_test.topics)
+            })
 
 
+class Ranking(Resource):
+    pass #def get(self):
 
 
 
 class Show(Resource):
-    def get(self):
+  def get(self):
 
         # create admin
-        # User(user_name="admin", password="xyz", admin=True, test_creator=True).save()
+       # User(user_name="admin", password="xyz", admin=True).save()
 
         users = []
         tests = []
-        topics = []
-
+    
         for u in User.objects():
             users.append(u.user_name)
         
@@ -194,15 +213,16 @@ class Show(Resource):
         for t in Test.objects():
             tests.append((t.test_name, t.author.user_name))
         
-        for topic in Topic.objects():
-                topics.append((topic.topic_name, topic.philosopher, topic.content))
+        # for test in Test.objects():
+        #     topics.append((topic.test_name., topic.topic_name, topic.philosopher, topic.content))
 
-        administator = User.objects(admin=True).first()
+    #     administator = User.objects(admin=True).first()
         return jsonify({
+            "ok": "ok",
             "users":str(users),
-            "tests":str(tests),
-            "topics": str(topics),
-            "admin":administator.user_name
+            # "tests":str(tests),
+            "test": tests
+            # "admin":administator.user_name
         })
 
 
@@ -212,6 +232,8 @@ api.add_resource(AdminPanel, '/admin_panel')
 api.add_resource(AddTest, '/add_test')
 api.add_resource(RemoveTest, '/remove_test')
 api.add_resource(AddTopic, '/add_topic')
+api.add_resource(ShowTest, '/show_test')
+api.add_resource(Ranking, '/ranking')
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0')

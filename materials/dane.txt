@@ -4,10 +4,13 @@
    
 }
 
-api.add_resource(Test, '/test')
-api.add_resource(Register, '/register')
-api.add_resource(AdminPanel, '/adminpanel')
 
+api.add_resource(Show, '/show')
+api.add_resource(Register, '/register')
+api.add_resource(AdminPanel, '/admin_panel')
+api.add_resource(AddTest, '/add_test')
+api.add_resource(RemoveTest, '/remove_test')
+api.add_resource(AddTopic, '/add_topic')
 
 #############################
 #       Collections         #
@@ -16,15 +19,12 @@ class User(db.Document):
     user_name = db.StringField(unique=True)
     password = db.StringField()
     admin = db.BooleanField()
-    test_creator = db.BooleanField()
+    responses = db.DictField()
     date_of_registration = db.DateTimeField(default=datetime.utcnow)
+
 
 class Test(db.Document):
     author = db.ReferenceField(User)
     test_name = db.StringField(required=True, unique=True)
+    topics = db.ListField(Topic, default =[])
     
-class Topic(db.Document):
-    test_name = db.ReferenceField(Test, reverse_delete_rule = CASCADE)
-    topic_name = db.StringField(required=True)
-    philosopher = db.StringField(required=True)
-    content = db.StringField(required=True)
